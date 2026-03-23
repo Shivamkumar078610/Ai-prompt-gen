@@ -1,19 +1,17 @@
 import os
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 from openai import OpenAI
 
 print("🚀 SERVER STARTING...")
 
 app = Flask(__name__)
-
-# ✅ FIXED CORS (important)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
-# 🔐 Put your real OpenAI API key here
-client = OpenAI(api_key="https://github.com/Shivamkumar078610/seo-api.git")
+# 🔐 Secure API Key (from Render Environment)
+client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
-# ✅ Home route
+# ✅ Home route (optional UI support)
 @app.route('/')
 def home():
     return jsonify({"message": "API is running 🚀"})
@@ -21,16 +19,21 @@ def home():
 # 🔹 TEXT → PROMPT
 def generate_text_prompt(concept, mode):
     if mode == 'image':
-        system_msg = "Create a detailed cinematic AI image prompt with lighting, angle, style, colors and negative prompts."
+        system_msg = """You are an expert AI Image Prompt Engineer.
+Create a highly detailed prompt including subject, lighting, camera angle,
+style (cinematic, 8k, unreal engine), color palette and negative prompts."""
     else:
-        system_msg = "Create a cinematic AI video prompt with camera movement, motion, lighting and atmosphere."
+        system_msg = """You are an expert AI Video Prompt Engineer.
+Create a cinematic prompt including camera movement, motion, lighting,
+atmosphere, subject detail and pacing."""
 
     response = client.chat.completions.create(
         model="gpt-4o",
         messages=[
             {"role": "system", "content": system_msg},
             {"role": "user", "content": concept}
-        ]
+        ],
+        temperature=0.7
     )
 
     return response.choices[0].message.content
@@ -38,7 +41,7 @@ def generate_text_prompt(concept, mode):
 
 # 🔹 IMAGE → PROMPT
 def analyze_media(base64_image, mode):
-    system_msg = "Analyze and recreate this as a professional AI prompt."
+    system_msg = "Analyze this media and generate a professional AI prompt."
 
     response = client.chat.completions.create(
         model="gpt-4o",
@@ -47,7 +50,7 @@ def analyze_media(base64_image, mode):
             {
                 "role": "user",
                 "content": [
-                    {"type": "text", "text": "Describe this"},
+                    {"type": "text", "text": "Describe and recreate this."},
                     {
                         "type": "image_url",
                         "image_url": {
@@ -56,7 +59,8 @@ def analyze_media(base64_image, mode):
                     },
                 ],
             }
-        ]
+        ],
+        max_tokens=300
     )
 
     return response.choices[0].message.content
@@ -68,10 +72,22 @@ def generate():
     data = request.json
 
     try:
-        if data['type'] == 'text':
-            result = generate_text_prompt(data['concept'], data['mode'])
+        mode = data.get('mode')
+        input_type = data.get('type')
+
+        if input_type == 'text':
+            concept = data.get('concept')
+            if not concept:
+                return jsonify({"error": "Concept is required"}), 400
+
+            result = generate_text_prompt(concept, mode)
+
         else:
-            result = analyze_media(data['imageData'], data['mode'])
+            image_data = data.get('imageData')
+            if not image_data:
+                return jsonify({"error": "Image data missing"}), 400
+
+            result = analyze_media(image_data, mode)
 
         return jsonify({"prompt": result})
 
@@ -79,5 +95,7 @@ def generate():
         print("❌ ERROR:", e)
         return jsonify({"error": str(e)}), 500
 
+
+# 🚀 RUN
 if __name__ == '__main__':
     app.run()

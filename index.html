@@ -17,7 +17,7 @@
 
     body {
         font-family: 'Segoe UI', sans-serif;
-        background: var(--bg);
+        background-color: var(--bg);
         color: var(--text);
         display: flex;
         justify-content: center;
@@ -27,7 +27,7 @@
     }
 
     .container {
-        background: var(--card);
+        background-color: var(--card);
         padding: 2rem;
         border-radius: 16px;
         width: 90%;
@@ -61,6 +61,7 @@
         padding: 10px;
         border-radius: 8px;
         min-height: 50px;
+        white-space: pre-wrap;
     }
 </style>
 ```
@@ -70,7 +71,7 @@
 <body>
 
 <div class="container">
-    <h2>AI Prompt Generator 🔥</h2>
+    <h2>🔥 AI Prompt Generator</h2>
 
 ```
 <textarea id="input" placeholder="Enter your idea..."></textarea>
@@ -90,7 +91,7 @@ async function generatePrompt() {
     resultDiv.innerText = "Generating...";
 
     try {
-        const response = await fetch("http://localhost:5000/generate", {
+        const response = await fetch("https://ai-prompt-gen-rv5a.onrender.com/generate", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
@@ -111,7 +112,7 @@ async function generatePrompt() {
         }
 
     } catch (error) {
-        resultDiv.innerText = "Failed to fetch. Check backend.";
+        resultDiv.innerText = "❌ Failed to fetch. Check backend or internet.";
         console.error(error);
     }
 }
