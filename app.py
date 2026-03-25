@@ -1,24 +1,29 @@
 import os
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify
 from flask_cors import CORS
 from openai import OpenAI
 
 print("🚀 SERVER STARTING...")
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "*"}})
+CORS(app)
 
-# 🔐 Secure API Key (from Render Environment)
-client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+# ✅ Get API Key from Render Environment
+api_key = os.environ.get("OPENAI_API_KEY")
 
-# ✅ Home route (optional UI support)
+if not api_key:
+    print("❌ ERROR: OPENAI_API_KEY is missing!")
+
+client = OpenAI(api_key=api_key)
+
+# ✅ Home Route (IMPORTANT for testing)
 @app.route('/')
 def home():
     return jsonify({"message": "API is running 🚀"})
 
-# 🔹 TEXT → PROMPT
+# 🔹 Generate Prompt from Text
 def generate_text_prompt(concept, mode):
-    if mode == 'image':
+    if mode == "image":
         system_msg = """You are an expert AI Image Prompt Engineer.
 Create a highly detailed prompt including subject, lighting, camera angle,
 style (cinematic, 8k, unreal engine), color palette and negative prompts."""
@@ -39,7 +44,7 @@ atmosphere, subject detail and pacing."""
     return response.choices[0].message.content
 
 
-# 🔹 IMAGE → PROMPT
+# 🔹 Analyze Image
 def analyze_media(base64_image, mode):
     system_msg = "Analyze this media and generate a professional AI prompt."
 
@@ -50,14 +55,14 @@ def analyze_media(base64_image, mode):
             {
                 "role": "user",
                 "content": [
-                    {"type": "text", "text": "Describe and recreate this."},
+                    {"type": "text", "text": "Describe and recreate this"},
                     {
                         "type": "image_url",
                         "image_url": {
                             "url": f"data:image/jpeg;base64,{base64_image}"
-                        },
-                    },
-                ],
+                        }
+                    }
+                ]
             }
         ],
         max_tokens=300
@@ -69,21 +74,21 @@ def analyze_media(base64_image, mode):
 # 🔥 MAIN API
 @app.route('/generate', methods=['POST'])
 def generate():
-    data = request.json
-
     try:
-        mode = data.get('mode')
-        input_type = data.get('type')
+        data = request.json
 
-        if input_type == 'text':
-            concept = data.get('concept')
+        mode = data.get("mode")
+        input_type = data.get("type")
+
+        if input_type == "text":
+            concept = data.get("concept")
             if not concept:
-                return jsonify({"error": "Concept is required"}), 400
+                return jsonify({"error": "Concept required"}), 400
 
             result = generate_text_prompt(concept, mode)
 
         else:
-            image_data = data.get('imageData')
+            image_data = data.get("imageData")
             if not image_data:
                 return jsonify({"error": "Image data missing"}), 400
 
@@ -96,8 +101,7 @@ def generate():
         return jsonify({"error": str(e)}), 500
 
 
-# 🚀 RUN
-if __name__ == '__main__':
-    if __name__ == '__main__':
+# 🚀 RUN (for local only, Render uses gunicorn)
+if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)
+    app.run(host="0.0.0.0", port=port)
