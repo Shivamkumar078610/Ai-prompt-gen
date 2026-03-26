@@ -8,29 +8,25 @@ print("🚀 SERVER STARTING...")
 app = Flask(__name__)
 CORS(app)
 
-# ✅ Get API Key from Render Environment
+# ✅ Get API Key safely
 api_key = os.environ.get("OPENAI_API_KEY")
 
 if not api_key:
-    print("❌ ERROR: OPENAI_API_KEY is missing!")
+    print("❌ ERROR: OPENAI_API_KEY missing")
 
 client = OpenAI(api_key=api_key)
 
-# ✅ Home Route (IMPORTANT for testing)
-@app.route('/')
+# ✅ Home route
+@app.route("/")
 def home():
     return jsonify({"message": "API is running 🚀"})
 
-# 🔹 Generate Prompt from Text
+# 🔹 Text → Prompt
 def generate_text_prompt(concept, mode):
     if mode == "image":
-        system_msg = """You are an expert AI Image Prompt Engineer.
-Create a highly detailed prompt including subject, lighting, camera angle,
-style (cinematic, 8k, unreal engine), color palette and negative prompts."""
+        system_msg = "Create a highly detailed AI image prompt with cinematic lighting, camera angle, style and negative prompts."
     else:
-        system_msg = """You are an expert AI Video Prompt Engineer.
-Create a cinematic prompt including camera movement, motion, lighting,
-atmosphere, subject detail and pacing."""
+        system_msg = "Create a cinematic AI video prompt with camera movement, lighting, motion and atmosphere."
 
     response = client.chat.completions.create(
         model="gpt-4o",
@@ -44,55 +40,19 @@ atmosphere, subject detail and pacing."""
     return response.choices[0].message.content
 
 
-# 🔹 Analyze Image
-def analyze_media(base64_image, mode):
-    system_msg = "Analyze this media and generate a professional AI prompt."
-
-    response = client.chat.completions.create(
-        model="gpt-4o",
-        messages=[
-            {"role": "system", "content": system_msg},
-            {
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": "Describe and recreate this"},
-                    {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": f"data:image/jpeg;base64,{base64_image}"
-                        }
-                    }
-                ]
-            }
-        ],
-        max_tokens=300
-    )
-
-    return response.choices[0].message.content
-
-
 # 🔥 MAIN API
-@app.route('/generate', methods=['POST'])
+@app.route("/generate", methods=["POST"])
 def generate():
     try:
         data = request.json
 
         mode = data.get("mode")
-        input_type = data.get("type")
+        concept = data.get("concept")
 
-        if input_type == "text":
-            concept = data.get("concept")
-            if not concept:
-                return jsonify({"error": "Concept required"}), 400
+        if not concept:
+            return jsonify({"error": "Concept required"}), 400
 
-            result = generate_text_prompt(concept, mode)
-
-        else:
-            image_data = data.get("imageData")
-            if not image_data:
-                return jsonify({"error": "Image data missing"}), 400
-
-            result = analyze_media(image_data, mode)
+        result = generate_text_prompt(concept, mode)
 
         return jsonify({"prompt": result})
 
@@ -101,7 +61,5 @@ def generate():
         return jsonify({"error": str(e)}), 500
 
 
-# 🚀 RUN (for local only, Render uses gunicorn)
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+# 🔥 IMPORTANT FOR GUNICORN
+application = app
